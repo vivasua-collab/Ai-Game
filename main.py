@@ -13,16 +13,19 @@ def quick_start():
     # 3. Основные операции
     # Создать мир
     from models import World
-    new_world = World(name="Нова", theme="Фэнтези")
+    import time
+    world_name = f"Нова_{int(time.time())}"
+    new_world = World(name=world_name, theme="Фэнтези")
     world_id = manager.worlds.create_world(new_world)
     
     # Добавить персонажа
     from models import Character
+    import json
     hero = Character(
         world_id=world_id,
         name="Косой",
         type="player",
-        skills={"атака": 80, "защита": 70}
+        skills_json=json.dumps({"атака": 80, "защита": 70}, ensure_ascii=False)
     )
     hero_id = manager.characters.create_character(hero)
     
