@@ -78,6 +78,9 @@ def main_loop():
     """Основной цикл приложения."""
     db_manager = DatabaseManager("game.db")
     ai_master = LocalModelGameMaster()
+    
+    # Добавленный комментарий для тестирования изменений
+    print("Инициализация приложения завершена.")
 
     while True:
         print("\n--- Главное меню ---")
