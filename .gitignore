@@ -2,11 +2,18 @@
 # Database files
 *.db
 
-# Python
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Test and coverage
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
 
 # Logs
 *.log
@@ -22,8 +29,12 @@ __pycache__/
 *.swp
 *.swo
 
-# Dependencies
-node_modules/
-venv/
-.venv/
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
 ```

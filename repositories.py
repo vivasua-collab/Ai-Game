@@ -117,6 +117,12 @@ class CharacterRepository:
         rows = self.db.fetch_all(query, (world_id,))
         return [self._row_to_character(row) for row in rows]
     
+    def get_characters_by_world_and_type(self, world_id: int, char_type: str) -> List[Character]:
+        """Получить персонажей определенного типа в мире"""
+        query = "SELECT * FROM Characters WHERE world_id = ? AND type = ? ORDER BY name"
+        rows = self.db.fetch_all(query, (world_id, char_type))
+        return [self._row_to_character(row) for row in rows]
+    
     def get_characters_at_location(self, world_id: int, x: float, y: float, radius: float = 1.0) -> List[Character]:
         """Получить персонажей в радиусе от точки"""
         query = """
