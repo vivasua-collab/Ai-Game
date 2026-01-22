@@ -1,5 +1,7 @@
 from database import DatabaseManager
 from ai_workspace import LocalModelGameMaster
+from new_world import create_world as create_new_world
+from character_creation import get_main_character_for_world, create_character_in_world
 
 def display_worlds(worlds):
     """Отображение списка миров."""
@@ -33,11 +35,20 @@ def select_world(db_manager: DatabaseManager):
             print("Введите корректный номер.")
 
 def create_world(db_manager: DatabaseManager):
-    """Создание нового мира."""
-    name = input("Введите название нового мира: ")
-    world_id = db_manager.create_world(name)
-    print(f"Мир '{name}' создан с ID {world_id}.")
-    return {"id": world_id, "name": name}
+    """Создание нового мира через модуль new_world."""
+    # Вызов функции из модуля new_world для создания мира
+    world_id = create_new_world(db_path=db_manager.db.db_path)
+    # Получаем информацию о новом мире для возврата
+    new_world = db_manager.get_all_worlds()
+    selected_world = next((w for w in new_world if w["id"] == world_id), None)
+    if selected_world:
+        print(f"Мир '{selected_world['name']}' создан с ID {world_id}.")
+        return selected_world
+    else:
+        # Если не удается найти мир сразу после создания, возвращаем базовую информацию
+        world_info = db_manager.db.fetch_one("SELECT name FROM Worlds WHERE world_id = ?", (world_id,))
+        name = world_info["name"] if world_info else "Новый мир"
+        return {"id": world_id, "name": name}
 
 def delete_world(db_manager: DatabaseManager):
     """Удаление мира."""
@@ -77,8 +88,7 @@ def edit_worlds_menu(db_manager: DatabaseManager):
 def main_loop():
     """Основной цикл приложения."""
     db_manager = DatabaseManager("game.db")
-    ai_master = LocalModelGameMaster()
-
+    
     while True:
         print("\n--- Главное меню ---")
         print("1. Выбрать мир")
@@ -91,7 +101,36 @@ def main_loop():
             selected_world = select_world(db_manager)
             if selected_world:
                 print(f"Загружаем мир: {selected_world['name']}...")
-                # Здесь будет логика игры
+                
+                # Проверяем наличие главного персонажа в выбранном мире
+                main_character = get_main_character_for_world(selected_world['id'], db_path=db_manager.db.db_path)
+                
+                if main_character:
+                    print(f"Найден главный персонаж: {main_character['name']} (ID: {main_character['id']})")
+                    print("Запуск симуляции мира...")
+                    # Здесь будет логика запуска симуляции мира с главным персонажем
+                    # Пока что просто выводим сообщение
+                    print("Симуляция мира запущена. Для выхода в главное меню нажмите любую клавишу...")
+                    input("Нажмите Enter для возврата в главное меню...")
+                else:
+                    print("В этом мире нет главного персонажа.")
+                    create_char = input("Хотите создать главного персонажа? (y/n): ").lower()
+                    if create_char in ['y', 'yes', 'да']:
+                        try:
+                            character_id = create_character_in_world(selected_world['id'], db_path=db_manager.db.db_path)
+                            print(f"Главный персонаж создан с ID: {character_id}")
+                            
+                            # После создания персонажа, спрашиваем, хочет ли пользователь запустить симуляцию
+                            start_sim = input("Хотите запустить симуляцию мира с новым персонажем? (y/n): ").lower()
+                            if start_sim in ['y', 'yes', 'да']:
+                                print("Запуск симуляции мира...")
+                                # Здесь будет логика запуска симуляции мира с новым персонажем
+                                print("Симуляция мира запущена. Для выхода в главное меню нажмите любую клавишу...")
+                                input("Нажмите Enter для возврата в главное меню...")
+                        except Exception as e:
+                            print(f"Ошибка при создании персонажа: {e}")
+                    else:
+                        print("Возвращаемся в главное меню...")
         elif menu_choice == "2":
             edit_worlds_menu(db_manager)
         elif menu_choice == "3":
@@ -99,6 +138,7 @@ def main_loop():
             break
         else:
             print("Неверный выбор. Попробуйте снова.")
+
 
 if __name__ == "__main__":
     main_loop()
