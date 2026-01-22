@@ -1,0 +1,15 @@
+```gitignore
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database
+game_world.db
+
+# Environment
+.env
+.env.local
+*.env.*
+```
