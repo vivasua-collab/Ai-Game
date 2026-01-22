@@ -146,7 +146,7 @@ class TransactionContext:
 class DatabaseManager:
     """Класс для управления базой данных игровых миров (совместимость с main.py)"""
     
-    def __init__(self, db_path: str = "game.db"):
+    def __init__(self, db_path: str = "game_world.db"):
         """
         Инициализация менеджера базы данных
         
