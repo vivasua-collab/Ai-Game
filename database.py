@@ -141,3 +141,60 @@ class TransactionContext:
             self.db.logger.error(f"Транзакция отменена: {exc_val}")
         else:
             self.conn.commit()
+
+
+class DatabaseManager:
+    """Класс для управления базой данных игровых миров (совместимость с main.py)"""
+    
+    def __init__(self, db_path: str = "game_world.db"):
+        """
+        Инициализация менеджера базы данных
+        
+        Args:
+            db_path: Путь к файлу базы данных
+        """
+        self.db = GameDatabase(db_path)
+        
+        # Используем инициализацию из init_database для полной совместимости
+        self._initialize_tables()
+    
+    def _initialize_tables(self):
+        """Инициализация таблиц базы данных"""
+        from init_database import initialize_database
+        initialize_database(self.db.db_path)
+    
+    def get_all_worlds(self):
+        """Получить список всех миров"""
+        query = "SELECT world_id as id, name FROM Worlds ORDER BY world_id"
+        rows = self.db.fetch_all(query)
+        
+        worlds = []
+        for row in rows:
+            worlds.append({
+                "id": row["id"],
+                "name": row["name"]
+            })
+        
+        return worlds
+    
+    def create_world(self, name: str):
+        """Создать новый мир
+        
+        Args:
+            name: Название мира
+            
+        Returns:
+            ID созданного мира
+        """
+        query = "INSERT INTO Worlds (name, theme) VALUES (?, ?)"
+        self.db.execute_query(query, (name, "Default Theme"))
+        return self.db.get_last_insert_id()
+    
+    def delete_world(self, world_id: int):
+        """Удалить мир по ID
+        
+        Args:
+            world_id: ID мира для удаления
+        """
+        query = "DELETE FROM Worlds WHERE world_id = ?"
+        self.db.execute_query(query, (world_id,))
