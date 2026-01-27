@@ -1,7 +1,11 @@
 from database import DatabaseManager
-from ai_workspace import LocalModelGameMaster
+from ai_workspace import api
 from new_world import create_world as create_new_world
 from character_creation import get_main_character_for_world, create_character_in_world
+import asyncio
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 def display_worlds(worlds):
     """Отображение списка миров."""
@@ -85,8 +89,78 @@ def edit_worlds_menu(db_manager: DatabaseManager):
         else:
             print("Неверный выбор. Попробуйте снова.")
 
+def start_models_with_timeout():
+    """Запускает модели с таймаутом 10 секунд, после чего продолжает выполнение."""
+    def get_user_choice():
+        print("Выберите количество моделей для запуска:")
+        print("1 - Запустить одну модель")
+        print("2 - Запустить две модели")
+        choice = input("Ваш выбор (1 или 2, по умолчанию 1): ").strip()
+        if choice == "2":
+            return 2
+        else:
+            return 1
+    
+    # Запускаем ввод пользователя в отдельном потоке
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(get_user_choice)
+    
+    # Ждем ввод в течение 10 секунд
+    try:
+        choice = future.result(timeout=10)
+    except:
+        print("\nВремя ожидания истекло. Продолжаем с одной моделью.")
+        choice = 1
+    
+    # Запускаем модели
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    success = loop.run_until_complete(api.start_models(choice))
+    loop.close()
+    
+    return success
+
+def chat_simulation(selected_world, main_character):
+    """Симуляция мира с чатом и взаимодействием с ИИ."""
+    print("Запуск симуляции мира...")
+    
+    # Отправляем первый запрос в API ИИ для старта мира
+    initial_prompt = f"Создай начальный сценарий для мира '{selected_world['name']}' с главным героем '{main_character['name']}'. Опиши начальную ситуацию, локацию и возможные действия."
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    initial_response = loop.run_until_complete(api.process_input(f"INPUT-1: {initial_prompt}"))
+    loop.close()
+    
+    print("\n--- НАЧАЛО ИГРЫ ---")
+    print(initial_response)
+    
+    # Основной цикл чата
+    while True:
+        user_input = input("\nВаше действие или вопрос: ")
+        if user_input.lower() in ['exit', 'quit', 'выйти', 'выход']:
+            break
+            
+        # Формируем запрос с учетом состояния ГГ
+        prompt = f"Как главный герой '{main_character['name']}' должен отреагировать на это действие: '{user_input}'? Опиши развитие событий в мире '{selected_world['name']}'."
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        response = loop.run_until_complete(api.process_input(f"INPUT-1: {prompt}"))
+        loop.close()
+        
+        print(response)
+
 def main_loop():
     """Основной цикл приложения."""
+    # Сначала запускаем стартовую процедуру для загрузки моделей
+    print("Запуск стартовой процедуры загрузки моделей...")
+    models_started = start_models_with_timeout()
+    
+    if not models_started:
+        print("Не удалось запустить модели. Завершение программы.")
+        return
+    
     db_manager = DatabaseManager("game.db")
     
     while True:
@@ -107,11 +181,8 @@ def main_loop():
                 
                 if main_character:
                     print(f"Найден главный персонаж: {main_character['name']} (ID: {main_character['id']})")
-                    print("Запуск симуляции мира...")
-                    # Здесь будет логика запуска симуляции мира с главным персонажем
-                    # Пока что просто выводим сообщение
-                    print("Симуляция мира запущена. Для выхода в главное меню нажмите любую клавишу...")
-                    input("Нажмите Enter для возврата в главное меню...")
+                    # Запускаем симуляцию с чатом
+                    chat_simulation(selected_world, main_character)
                 else:
                     print("В этом мире нет главного персонажа.")
                     create_char = input("Хотите создать главного персонажа? (y/n): ").lower()
@@ -123,10 +194,9 @@ def main_loop():
                             # После создания персонажа, спрашиваем, хочет ли пользователь запустить симуляцию
                             start_sim = input("Хотите запустить симуляцию мира с новым персонажем? (y/n): ").lower()
                             if start_sim in ['y', 'yes', 'да']:
-                                print("Запуск симуляции мира...")
-                                # Здесь будет логика запуска симуляции мира с новым персонажем
-                                print("Симуляция мира запущена. Для выхода в главное меню нажмите любую клавишу...")
-                                input("Нажмите Enter для возврата в главное меню...")
+                                # Получаем информацию о созданном персонаже для симуляции
+                                main_character = get_main_character_for_world(selected_world['id'], db_path=db_manager.db.db_path)
+                                chat_simulation(selected_world, main_character)
                         except Exception as e:
                             print(f"Ошибка при создании персонажа: {e}")
                     else:
@@ -134,6 +204,12 @@ def main_loop():
         elif menu_choice == "2":
             edit_worlds_menu(db_manager)
         elif menu_choice == "3":
+            print("Остановка всех моделей...")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(api.stop_all())
+            loop.close()
+            
             print("Выход из игры.")
             break
         else:

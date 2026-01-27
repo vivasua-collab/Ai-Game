@@ -1,40 +1,4 @@
-```
-# Database files
-*.db
-
-# Python cache
+```gitignore
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Test and coverage
-.coverage
-coverage/
-htmlcov/
-.pytest_cache/
-.mypy_cache/
-
-# Logs
-*.log
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Build artifacts
-dist/
-build/
-*.egg-info/
 ```
