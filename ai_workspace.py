@@ -1,153 +1,134 @@
-from typing import Dict, List, Optional
-import json
-from repositories import GameWorldManager
-from models import *
-import random
+"""
+API для управления сессиями ИИ моделей.
 
+Этот модуль предоставляет интерфейс для запуска и взаимодействия с двумя моделями ИИ.
+Он принимает команды и данные для обработки, а также возвращает результаты генерации.
+Работает только с входом и выходом данных — не выполняет сторонние операции.
 
-class LocalModelGameMaster:
-    """Локальный ИИ-мастер игры, эмулирующий поведение ИИ для автономной работы игры"""
-    
-    def __init__(self, model_name: str = "local-llm-emulator"):
-        """
-        Инициализация локального ИИ-мастера
-        
-        Args:
-            model_name: Название модели (для совместимости с будущей ИИ-реализацией)
-        """
-        self.model_name = model_name
-        self.world_manager = GameWorldManager("game.db")  # Указываем тот же файл базы данных, что и DatabaseManager
-        self.conversation_history = {}
-        print(f"Локальный ИИ-мастер инициализирован с моделью: {model_name}")
-    
-    def generate_response(self, world_id: int, player_input: str, character_id: int = None) -> str:
-        """
-        Генерация ответа от ИИ-мастера на основе текущего состояния мира и ввода игрока
-        
-        Args:
-            world_id: ID игрового мира
-            player_input: Ввод игрока
-            character_id: ID персонажа игрока (если применимо)
-            
-        Returns:
-            Текст ответа от ИИ-мастера
-        """
-        # Получаем контекст мира
-        world_context = self.world_manager.get_world_context(world_id)
-        
-        if not world_context:
-            return "Мир не найден. Пожалуйста, выберите существующий игровой мир."
-        
-        # Эмуляция обработки запроса игрока
-        response = self._simulate_ai_response(world_context, player_input, character_id)
-        
-        # Сохраняем в историю
-        if world_id not in self.conversation_history:
-            self.conversation_history[world_id] = []
-        
-        self.conversation_history[world_id].append({
-            "player_input": player_input,
-            "ai_response": response,
-            "timestamp": len(self.conversation_history[world_id])
-        })
-        
-        return response
-    
-    def _simulate_ai_response(self, world_context: Dict, player_input: str, character_id: int = None) -> str:
-        """
-        Симуляция ИИ-ответа на основе контекста мира и ввода игрока
-        
-        Args:
-            world_context: Контекст игрового мира
-            player_input: Ввод игрока
-            character_id: ID персонажа игрока
-            
-        Returns:
-            Сгенерированный ответ
-        """
-        # Простая логика для симуляции ИИ-ответа
-        world_name = world_context['world']['name']
-        
-        # Определяем тип действия игрока
-        player_input_lower = player_input.lower()
-        
-        if any(word in player_input_lower for word in ['привет', 'здравствуй', 'здравствуйте', 'hello']):
-            return f"Приветствуем вас в мире '{world_name}'! Что бы вы хотели сделать?"
-        
-        elif any(word in player_input_lower for word in ['осмотреться', 'смотреть', 'вокруг', 'окрестности', 'look']):
-            # Описание окружения на основе персонажей в мире
-            characters = world_context.get('characters', [])
-            if characters:
-                char_names = [char['name'] for char in characters[:3]]  # Только первые 3 персонажа
-                return f"Вы осматриваетесь в мире '{world_name}'. Видите: {', '.join(char_names)}."
-            else:
-                return f"Вы находитесь в пустом пространстве мира '{world_name}'."
-        
-        elif any(word in player_input_lower for word in ['переместиться', 'идти', 'двигаться', 'move', 'go']):
-            return f"Вы перемещаетесь по миру '{world_name}'. Куда именно вы хотите идти?"
-        
-        elif any(word in player_input_lower for word in ['инвентарь', 'вещи', 'предметы', 'inventory']):
-            # Показываем инвентарь персонажа, если известен
-            if character_id and character_id in world_context.get('inventories', {}):
-                inventory = world_context['inventories'][character_id]
-                if inventory:
-                    items = [inv.get('item_name', 'неизвестный предмет') for inv in inventory]
-                    return f"Ваш инвентарь: {', '.join(items)}"
-                else:
-                    return "Ваш инвентарь пуст."
-            else:
-                return "Инвентарь недоступен."
-        
-        else:
-            # Общий случай - генерируем общий ответ
-            actions = [
-                f"В мире '{world_name}' происходит что-то интересное.",
-                f"Вы чувствуете атмосферу мира '{world_name}'.",
-                f"Что-то привлекает ваше внимание в '{world_name}'.",
-                f"Воздух в '{world_name}' наполнен загадками.",
-                f"Ваши действия в '{world_name}' имеют последствия."
-            ]
-            
-            return random.choice(actions)
-    
-    def update_world_state(self, world_id: int, action_result: Dict) -> bool:
-        """
-        Обновление состояния мира на основе действий игрока
-        
-        Args:
-            world_id: ID игрового мира
-            action_result: Результат действия игрока
-            
-        Returns:
-            Успешность обновления
-        """
-        try:
-            # В реальной реализации здесь будет логика обновления мира
-            # на основе действий игрока с использованием ИИ
-            print(f"Состояние мира {world_id} обновлено: {action_result}")
-            return True
-        except Exception as e:
-            print(f"Ошибка обновления мира: {e}")
-            return False
-    
-    def get_world_status(self, world_id: int) -> Dict:
-        """
-        Получение текущего статуса мира
-        
-        Args:
-            world_id: ID игрового мира
-            
-        Returns:
-            Статус мира
-        """
-        world_context = self.world_manager.get_world_context(world_id)
-        
-        if not world_context:
-            return {"error": "Мир не найден"}
-        
-        return {
-            "world_info": world_context['world'],
-            "character_count": len(world_context.get('characters', [])),
-            "active_relations": len(world_context.get('relationships', [])),
-            "has_inventory": bool(world_context.get('inventories'))
+Поддерживаемые модели:
+- Модель 1 (основная): тяжелая модель генерации повествования, запускается на первом графическом ускорителе.
+- Модель 2 (легковесная): вторичная модель для вспомогательных задач, работает на CPU или втором графическом адаптере при наличии.
+
+Функционал:
+- Команда START-1 или START-2 запускает одну или две модели соответственно.
+- После старта все входные сообщения должны начинаться с префикса INPUT-* (где * — номер модели).
+- При запуске одной модели маршрутация игнорируется: весь поток идет через модель 1.
+- Контекстное окно задается отдельно для каждой модели.
+- Поддерживается динамическая маршрутизация запросов по модели.
+
+Пример использования:
+  - Вход: "START-2"
+  - Вход: "INPUT-1: Привет, расскажи историю..."
+  - Вход: "INPUT-2: Сократи этот текст: ..."
+  - Выход: ответ от соответствующей модели.
+
+Конфигурация контекстных окон и устройств должна быть задана в конфигурационном файле или в коде.
+
+Для получения ответа сторонним модулем:
+- Вызовите await api.process_input(message), где message — входное сообщение.
+- Результат будет возвращён в переменной response.
+"""
+
+import asyncio
+import logging
+from typing import Optional
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class AIWorkspaceAPI:
+    def __init__(self):
+        self.models = {}
+        self.context_windows = {
+            1: 4096,  # Основная модель
+            2: 1024   # Легковесная модель
         }
+        self.device_mapping = {
+            1: "cuda:0",  # Первый графический ускоритель
+            2: "cuda:1"   # Второй графический ускоритель или "cpu"
+        }
+
+    async def start_models(self, count: int) -> bool:
+        """Запускает указанное количество моделей."""
+        if count not in [1, 2]:
+            logger.error("Недопустимое количество моделей. Допустимо: 1 или 2.")
+            return False
+
+        for model_id in range(1, count + 1):
+            try:
+                # Имитация загрузки модели
+                self.models[model_id] = f"Model_{model_id}_loaded_on_{self.device_mapping[model_id]}"
+                logger.info(f"Модель {model_id} запущена на {self.device_mapping[model_id]}")
+            except Exception as e:
+                logger.error(f"Ошибка запуска модели {model_id}: {e}")
+                return False
+
+        logger.info(f"Успешно запущены {count} модели(ей)")
+        return True
+
+    async def process_input(self, message: str) -> str:
+        """Обрабатывает входное сообщение с маршрутизацией по модели."""
+        if not message.startswith("INPUT-"):
+            return "Ошибка: сообщение должно начинаться с INPUT-*"
+
+        parts = message.split(":", 1)
+        if len(parts) < 2:
+            return "Ошибка: неверный формат сообщения"
+
+        model_id_str = parts[0][5:]  # извлекаем число после INPUT-
+        try:
+            model_id = int(model_id_str)
+        except ValueError:
+            return "Ошибка: неверный номер модели"
+
+        if model_id not in self.models:
+            return f"Ошибка: модель {model_id} не запущена"
+
+        # Если запущена только одна модель — все идет через неё
+        if len(self.models) == 1 and 1 in self.models:
+            model_id = 1
+
+        # Имитация генерации
+        response = f"Ответ от модели {model_id}: {parts[1].strip()[:50]}... (генерация завершена)"
+        return response
+
+    async def stop_all(self):
+        """Останавливает все модели."""
+        for model_id in self.models:
+            logger.info(f"Модель {model_id} остановлена")
+        self.models.clear()
+        logger.info("Все модели остановлены")
+
+
+# Глобальный экземпляр API
+api = AIWorkspaceAPI()
+
+# Асинхронная точка входа
+async def main():
+    print("AI Workspace API запущен. Ожидаю команды...")
+    while True:
+        try:
+            command = input("Введите команду (например, 'START-2' или 'INPUT-1: ...'): ").strip()
+            if command.startswith("START-"):
+                _, count_str = command.split("-", 1)
+                try:
+                    count = int(count_str)
+                    success = await api.start_models(count)
+                    if not success:
+                        print("Не удалось запустить модели.")
+                except ValueError:
+                    print("Неверный формат команды. Используйте: START-1 или START-2")
+            elif command.startswith("INPUT-"):
+                result = await api.process_input(command)
+                print(result)
+            else:
+                print("Неизвестная команда. Доступны: START-1, START-2, INPUT-*")
+        except KeyboardInterrupt:
+            print("\nОстановка сервера...")
+            await api.stop_all()
+            break
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
